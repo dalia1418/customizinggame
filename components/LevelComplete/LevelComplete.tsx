@@ -120,7 +120,9 @@ const LevelComplete = () => {
         return;
       }
 
-      const response = await axios.post('http://127.0.0.1:5000/predict', {
+      //const response = await axios.post('http://127.0.0.1:5000/predict', { https://seriousgame.onrender.com
+      const response = await axios.post('https://seriousgame.onrender.com/predict', { 
+
         session: sessionData,
         user: JSON.stringify(user)
       }, {
