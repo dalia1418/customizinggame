@@ -8,28 +8,6 @@ import { ConfirmationModal } from "../Modals";
 import { useEffect, useState, useContext } from "react";
 import { SessionContext, UserContext } from "../../pages/_app";
 import axios from "axios";
-import { ParsedUrlQuery } from 'querystring';
-
-// Define types
-interface SessionData {
-  type: string;
-  subtype: string;
-  action: string;
-  time: number;
-}
-
-interface PredictionResponse {
-  prediction: string;
-}
-
-interface QueryParams {
-  score: string;
-  timer: string;
-  state: string;
-  lives: string;
-  level: string;
-  levels: string;
-}
 
 const useStyles = createStyles((theme) => ({
   wrapper: {
@@ -103,33 +81,18 @@ const useStyles = createStyles((theme) => ({
   },
 }));
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://seriousgame.onrender.com';
-
-function convertQuery(query: ParsedUrlQuery): QueryParams {
-  return {
-    score: query.score as string,
-    timer: query.timer as string,
-    state: query.state as string,
-    lives: query.lives as string,
-    level: query.level as string,
-    levels: query.levels as string,
-  };
-}
-
 const LevelComplete = () => {
   const { classes } = useStyles();
   const [opened, setOpened] = useState(false);
   const [prediction, setPrediction] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const router = useRouter();
-  const typedQuery = convertQuery(router.query);
-  const { score, timer, state, lives, level, levels } = typedQuery;
+  const { query } = useRouter();
 
   const { session, setSession } = useContext(SessionContext);
   const { user } = useContext(UserContext);
 
-  const newSession: SessionData = {
+  const { score, timer, state, lives, level, levels } = query;
+  const newSession = {
     type: "gameplay",
     subtype: "level",
     action: "next level",
@@ -148,17 +111,18 @@ const LevelComplete = () => {
     }
 
     predictPersonality(testSessionData);
-  }, [testSessionData, level, levels]);
+  }, []);
 
   const predictPersonality = async (sessionData: string) => {
-    if (!sessionData || sessionData === '[]') {
-      console.error('Empty session data');
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const response = await axios.post<PredictionResponse>(`${API_URL}/predict`, { 
+      if (!sessionData || sessionData === '[]') {
+        console.error('Empty session data');
+        return;
+      }
+
+      //const response = await axios.post('http://127.0.0.1:5000/predict', { https://seriousgame.onrender.com
+      const response = await axios.post('https://seriousgame.onrender.com/predict', { 
+
         session: sessionData,
         user: JSON.stringify(user)
       }, {
@@ -168,16 +132,12 @@ const LevelComplete = () => {
       });
       
       setPrediction(response.data.prediction);
+      
       console.log("Prediction response:", response.data);
+      
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Axios error:', error.response?.data || error.message);
-      } else {
-        console.error('Error predicting personality:', error);
-      }
+      console.error('Error predicting personality:', error);
       setPrediction(null);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -187,7 +147,7 @@ const LevelComplete = () => {
         {level === levels ? "Game Complete!" : `Level ${level} Complete!`}
       </Title>
 
-      <Text className={classes.score}>Score: {score}</Text>
+      <Text className={classes.score}>Score: {query.score}</Text>
 
       {level !== levels && (
         <Text className={classes.description}>
@@ -200,15 +160,9 @@ const LevelComplete = () => {
         <Rating />
       </Container>
 
-      {isLoading ? (
-        <Text>Loading prediction...</Text>
-      ) : prediction ? (
-        <Text>Prediction: {prediction}</Text>
-      ) : null}
-
       {level === levels ? (
         <>
-          <LeaderboardModal score={score} />
+          <LeaderboardModal score={query.score} />
           <NextLevel destination="/assessment" text="Assessment" completeGame />
         </>
       ) : (
@@ -227,7 +181,7 @@ const LevelComplete = () => {
           <ConfirmationModal
             opened={opened}
             onClose={() => setOpened(false)}
-            query={typedQuery}
+            query={query}
           />
 
           <NextLevel
