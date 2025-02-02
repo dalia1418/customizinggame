@@ -123,7 +123,7 @@ const LevelComplete = () => {
       //const data = '[{"type":"configuration","subtype":"configure game","action":"visit custom configuration page","context":{},"time":1676313196578},{"type":"configuration","subtype":"level","action":"start custom game","levels":"3","lives":"3","timer":180,"state":9,"time":1676313209130},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":9943,"state":"000000000","level":0},"time":1676313226930},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":9915,"state":"000001000","level":0},"time":1676313232689},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":9893,"state":"010001000","level":0},"time":1676313237049},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":9893,"state":"010001000","level":0},"time":1676313237552},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":9984,"state":"010001001","level":0},"time":1676313239529},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":9984,"state":"010001001","level":0},"time":1676313240030},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":10078,"state":"010011001","level":0},"time":1676313242122},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":10062,"state":"011011001","level":0},"time":1676313243386},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":10046,"state":"111011001","level":0},"time":1676313246281},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":10046,"state":"111011001","level":0},"time":1676313246783},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":10137,"state":"111011011","level":0},"time":1676313248346},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":3,"score":10124,"state":"111111011","level":0},"time":1676313250281},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":10124,"state":"111111011","level":0},"time":1676313250783},{"type":"gameplay","subtype":"level","action":"next level","time":1676313262745}]'
 
       //const response = await axios.post('http://127.0.0.1:5000/predict', { https://seriousgame.onrender.com/predict
-      const response = await axios.post('http://127.0.0.1:5000/predict', { 
+      const response = await axios.post('https://seriousgame.onrender.com/predict', { 
 
         session: sessionData,
         user: JSON.stringify(user)
@@ -142,7 +142,10 @@ const LevelComplete = () => {
       setPrediction(null);
     }
   };
-
+  let nextLevelLives = lives;
+  if (Number(prediction) === 1) {
+    nextLevelLives = '1';
+  }
   return (
     <Container className={classes.wrapper} size={1000}>
       <Title className={classes.title}>
@@ -185,7 +188,7 @@ const LevelComplete = () => {
             onClose={() => setOpened(false)}
             query={query}
           />
-
+          
           <NextLevel
             destination={{
               pathname: "/level",
@@ -193,9 +196,10 @@ const LevelComplete = () => {
                 score, 
                 timer, 
                 state, 
-                lives, 
+                lives: nextLevelLives, 
                 level, 
                 levels,
+                //prediction: prediction || ''
                 prediction: prediction || ''
               },
             }}
