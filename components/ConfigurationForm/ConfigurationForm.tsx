@@ -168,7 +168,7 @@ const ConfigurationForm = () => {
       <Container size={600}>
         <Text size="lg" className={classes.description}>
           These will be the initial configuration for the first level.
-          Subsequent levels will increase in difficulty.
+          Subsequent levels will adaptive base on your personality trait.
         </Text>
       </Container>
 
