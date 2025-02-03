@@ -85,6 +85,7 @@ const LevelComplete = () => {
   const { classes } = useStyles();
   const [opened, setOpened] = useState(false);
   const [prediction, setPrediction] = useState<string | null>(null);
+  const [isPredictionReady, setIsPredictionReady] = useState(false);
 
   const { query } = useRouter();
 
@@ -110,42 +111,44 @@ const LevelComplete = () => {
       localStorage.setItem("inventory", "");
     }
 
-    predictPersonality(testSessionData);
+    predictPersonality(testSessionData, () => {
+      setIsPredictionReady(true);
+    });
   }, []);
 
-  const predictPersonality = async (sessionData: string) => {
-    try {
-      if (!sessionData || sessionData === '[]') {
-        console.error('Empty session data');
-        return;
+  const predictPersonality = (sessionData: string, callback: () => void) => {
+    if (!sessionData || sessionData === '[]') {
+      console.error('Empty session data');
+      callback();
+      return;
+    }
+
+    axios.post('https://seriousgame.onrender.com/predict', { 
+      session: sessionData,
+      user: JSON.stringify(user)
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
       }
-
-      //const data = '[{"type":"configuration","subtype":"configure game","action":"visit custom configuration page","context":{},"time":1676313196578},{"type":"configuration","subtype":"level","action":"start custom game","levels":"3","lives":"3","timer":180,"state":9,"time":1676313209130},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":9943,"state":"000000000","level":0},"time":1676313226930},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":9915,"state":"000001000","level":0},"time":1676313232689},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":9893,"state":"010001000","level":0},"time":1676313237049},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":9893,"state":"010001000","level":0},"time":1676313237552},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":9984,"state":"010001001","level":0},"time":1676313239529},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":9984,"state":"010001001","level":0},"time":1676313240030},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":10078,"state":"010011001","level":0},"time":1676313242122},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":10062,"state":"011011001","level":0},"time":1676313243386},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":7,"score":10046,"state":"111011001","level":0},"time":1676313246281},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":10046,"state":"111011001","level":0},"time":1676313246783},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":5,"score":10137,"state":"111011011","level":0},"time":1676313248346},{"type":"gameplay","subtype":"level","action":"move hand","context":{"magnitude":3,"score":10124,"state":"111111011","level":0},"time":1676313250281},{"type":"gameplay","subtype":"level","action":"collect coin","context":{"score":10124,"state":"111111011","level":0},"time":1676313250783},{"type":"gameplay","subtype":"level","action":"next level","time":1676313262745}]'
-
-      //const response = await axios.post('http://127.0.0.1:5000/predict', { https://seriousgame.onrender.com/predict
-      const response = await axios.post('https://seriousgame.onrender.com/predict', { 
-
-        session: sessionData,
-        user: JSON.stringify(user)
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
+    })
+    .then(response => {
       setPrediction(response.data.prediction);
-      
       console.log("Prediction response:", response.data);
-      
-    } catch (error) {
+    })
+    .catch(error => {
       console.error('Error predicting personality:', error);
       setPrediction(null);
-    }
+    })
+    .finally(() => {
+      callback();
+    });
   };
+
   let nextLevelLives = lives;
   if (Number(prediction) === 1) {
     nextLevelLives = '1';
   }
+
   return (
     <Container className={classes.wrapper} size={1000}>
       <Title className={classes.title}>
@@ -189,22 +192,25 @@ const LevelComplete = () => {
             query={query}
           />
           
-          <NextLevel
-            destination={{
-              pathname: "/level",
-              query: { 
-                score, 
-                timer, 
-                state, 
-                lives: nextLevelLives, 
-                level, 
-                levels,
-                //prediction: prediction || ''
-                prediction: prediction || ''
-              },
-            }}
-            text="Next Level"
-          />
+          {!isPredictionReady ? (
+            <Text>Preparing next level...</Text>
+          ) : (
+            <NextLevel
+              destination={{
+                pathname: "/level",
+                query: { 
+                  score, 
+                  timer, 
+                  state, 
+                  lives: nextLevelLives, 
+                  level, 
+                  levels,
+                  prediction: prediction || ''
+                },
+              }}
+              text="Next Level"
+            />
+          )}
         </>
       )}
     </Container>

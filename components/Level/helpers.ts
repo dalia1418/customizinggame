@@ -3,6 +3,7 @@ const convertFromQuery = (el: string | string[] | undefined) => {
 };
 
 const generatePowerup = () => {
+  
   const powerups = ["time", "heart"];
   return powerups[Math.floor(Math.random() * powerups.length)];
 };
