@@ -5,9 +5,23 @@ import { LeaderboardModal } from "../Leaderboard";
 import { useRouter } from "next/router";
 import { IconArrowBackUp } from "@tabler/icons";
 import { ConfirmationModal } from "../Modals";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useCallback } from "react";
 import { SessionContext, UserContext } from "../../pages/_app";
 import axios from "axios";
+
+// Define TypeScript interfaces
+interface LevelCompleteProps {
+  score: string;
+  timer: string;
+  state: string;
+  lives: string;
+  level: string;
+  levels: string;
+}
+
+interface PredictionResponse {
+  prediction: number;
+}
 
 const useStyles = createStyles((theme) => ({
   wrapper: {
@@ -84,15 +98,27 @@ const useStyles = createStyles((theme) => ({
 const LevelComplete = () => {
   const { classes } = useStyles();
   const [opened, setOpened] = useState(false);
-  const [prediction, setPrediction] = useState<string | null>(null);
-  const [isPredictionReady, setIsPredictionReady] = useState(false);
+  const [predictionState, setPredictionState] = useState<{
+    prediction: number | null;
+    isReady: boolean;
+  }>({ prediction: null, isReady: false });
 
   const { query } = useRouter();
+
+  // Safely extract properties with default values
+  const {
+    score = "0",
+    timer = "0",
+    state = "default",
+    lives = "3",
+    level = "1",
+    levels = "1",
+  } = query as Partial<LevelCompleteProps>;
 
   const { session, setSession } = useContext(SessionContext);
   const { user } = useContext(UserContext);
 
-  const { score, timer, state, lives, level, levels } = query;
+  // Create new session data
   const newSession = {
     type: "gameplay",
     subtype: "level",
@@ -100,10 +126,43 @@ const LevelComplete = () => {
     time: Date.now(),
   };
 
-  const testSessionData = Array.isArray(session) 
-    ? JSON.stringify([...session, newSession]) 
+  const testSessionData = Array.isArray(session)
+    ? JSON.stringify([...session, newSession])
     : JSON.stringify([newSession]);
 
+  // Predict personality
+  const predictPersonality = useCallback(
+    async (sessionData: string) => {
+      if (!sessionData || sessionData === "[]") {
+        console.error("Empty session data");
+        return;
+      }
+//https://seriousgame.onrender.com/predict
+      try {
+        const response = await axios.post<PredictionResponse>(
+          "https://seriousgame.onrender.com/predict",
+          {
+            session: sessionData,
+            user: JSON.stringify(user),
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        setPredictionState({ prediction: response.data.prediction, isReady: true });
+        console.log("Prediction response:", response.data);
+      } catch (error) {
+        console.error("Error predicting personality:", error);
+        setPredictionState({ prediction: null, isReady: true });
+      }
+    },
+    [user]
+  );
+
+  // Fetch prediction on mount
   useEffect(() => {
     const inventoryJSON = localStorage.getItem("inventory");
 
@@ -111,43 +170,11 @@ const LevelComplete = () => {
       localStorage.setItem("inventory", "");
     }
 
-    predictPersonality(testSessionData, () => {
-      setIsPredictionReady(true);
-    });
-  }, []);
+    predictPersonality(testSessionData);
+  }, [level, levels, predictPersonality, testSessionData]);
 
-  const predictPersonality = (sessionData: string, callback: () => void) => {
-    if (!sessionData || sessionData === '[]') {
-      console.error('Empty session data');
-      callback();
-      return;
-    }
-
-    axios.post('https://seriousgame.onrender.com/predict', { 
-      session: sessionData,
-      user: JSON.stringify(user)
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(response => {
-      setPrediction(response.data.prediction);
-      console.log("Prediction response:", response.data);
-    })
-    .catch(error => {
-      console.error('Error predicting personality:', error);
-      setPrediction(null);
-    })
-    .finally(() => {
-      callback();
-    });
-  };
-
-  let nextLevelLives = lives;
-  if (Number(prediction) === 1) {
-    nextLevelLives = '1';
-  }
+  // Determine next level lives based on prediction
+  const nextLevelLives = predictionState.prediction === 1 ? "1" : lives;
 
   return (
     <Container className={classes.wrapper} size={1000}>
@@ -155,7 +182,7 @@ const LevelComplete = () => {
         {level === levels ? "Game Complete!" : `Level ${level} Complete!`}
       </Title>
 
-      <Text className={classes.score}>Score: {query.score}</Text>
+      <Text className={classes.score}>Score: {score}</Text>
 
       {level !== levels && (
         <Text className={classes.description}>
@@ -170,7 +197,7 @@ const LevelComplete = () => {
 
       {level === levels ? (
         <>
-          <LeaderboardModal score={query.score} />
+          <LeaderboardModal score={score} />
           <NextLevel destination="/assessment" text="Assessment" completeGame />
         </>
       ) : (
@@ -191,21 +218,21 @@ const LevelComplete = () => {
             onClose={() => setOpened(false)}
             query={query}
           />
-          
-          {!isPredictionReady ? (
+
+          {!predictionState.isReady ? (
             <Text>Preparing next level...</Text>
           ) : (
             <NextLevel
               destination={{
                 pathname: "/level",
-                query: { 
-                  score, 
-                  timer, 
-                  state, 
-                  lives: nextLevelLives, 
-                  level, 
+                query: {
+                  score,
+                  timer,
+                  state,
+                  lives: nextLevelLives,
+                  level,
                   levels,
-                  prediction: prediction || ''
+                  prediction: predictionState.prediction?.toString() || "",
                 },
               }}
               text="Next Level"
